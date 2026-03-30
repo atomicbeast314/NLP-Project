@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLP Chatbot</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-dot"></span>
+                    <span class="logo-text">NLP Chatbot</span>
+                </div>
+                <p class="logo-sub">Intent-based &middot; TF-IDF + Cosine Similarity</p>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="section-title">NLP Concepts</h3>
+                <button class="topic-btn" data-query="What is NLP?">
+                    <span class="topic-icon">&#x1f4ac;</span> What is NLP?
+                </button>
+                <button class="topic-btn" data-query="Explain tokenization">
+                    <span class="topic-icon">&#x2702;</span> Tokenization
+                </button>
+                <button class="topic-btn" data-query="What is sentiment analysis?">
+                    <span class="topic-icon">&#x1f4ca;</span> Sentiment Analysis
+                </button>
+                <button class="topic-btn" data-query="What are word embeddings?">
+                    <span class="topic-icon">&#x1f9e9;</span> Word Embeddings
+                </button>
+                <button class="topic-btn" data-query="How do transformers work?">
+                    <span class="topic-icon">&#x26a1;</span> Transformers
+                </button>
+                <button class="topic-btn" data-query="What is BERT?">
+                    <span class="topic-icon">&#x1f916;</span> BERT
+                </button>
+                <button class="topic-btn" data-query="What is TF-IDF?">
+                    <span class="topic-icon">&#x1f522;</span> TF-IDF
+                </button>
+                <button class="topic-btn" data-query="What is named entity recognition?">
+                    <span class="topic-icon">&#x1f3f7;</span> NER
+                </button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="section-title">AI Applications</h3>
+                <button class="topic-btn" data-query="What are applications of AI?">
+                    <span class="topic-icon">&#x1f30d;</span> General AI
+                </button>
+                <button class="topic-btn" data-query="AI in healthcare">
+                    <span class="topic-icon">&#x1f3e5;</span> Healthcare
+                </button>
+                <button class="topic-btn" data-query="AI in finance">
+                    <span class="topic-icon">&#x1f4b0;</span> Finance
+                </button>
+                <button class="topic-btn" data-query="AI in education">
+                    <span class="topic-icon">&#x1f393;</span> Education
+                </button>
+                <button class="topic-btn" data-query="What is deep learning?">
+                    <span class="topic-icon">&#x1f9e0;</span> Deep Learning
+                </button>
+                <button class="topic-btn" data-query="What is computer vision?">
+                    <span class="topic-icon">&#x1f441;</span> Computer Vision
+                </button>
+            </div>
+
+            <div class="sidebar-footer">
+                <p>CSE3246 &mdash; NLP Assignment</p>
+                <p class="tech-stack">Python &middot; NLTK &middot; scikit-learn &middot; Flask</p>
+            </div>
+        </aside>
+
+        <!-- Main chat area -->
+        <main class="chat-area">
+            <header class="chat-header">
+                <div class="header-left">
+                    <h1>NLP Chatbot</h1>
+                    <span class="header-status">
+                        <span class="status-dot"></span> Online
+                    </span>
+                </div>
+                <div class="header-right">
+                    <button id="clear-btn" class="clear-btn" title="Clear chat">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Clear
+                    </button>
+                </div>
+            </header>
+
+            <div class="messages" id="messages">
+                <!-- Welcome message -->
+                <div class="msg bot-msg">
+                    <div class="avatar bot-avatar">NLP</div>
+                    <div class="bubble bot-bubble">
+                        <p>Hello! I'm an <strong>intent-based NLP chatbot</strong> built with TF-IDF and cosine similarity.</p>
+                        <p>Ask me about <strong>NLP concepts</strong> (tokenization, transformers, BERT, etc.) or <strong>AI applications</strong> (healthcare, finance, robotics, etc.).</p>
+                        <p>Try typing a question below, or click a topic from the sidebar!</p>
+                    </div>
+                </div>
+
+                <!-- Suggestion chips -->
+                <div class="suggestions" id="suggestions">
+                    <button class="chip" data-query="What is NLP?">What is NLP?</button>
+                    <button class="chip" data-query="Explain tokenization">Explain tokenization</button>
+                    <button class="chip" data-query="How does sentiment analysis work?">Sentiment analysis</button>
+                    <button class="chip" data-query="What is BERT?">What is BERT?</button>
+                    <button class="chip" data-query="AI applications in healthcare">AI in healthcare</button>
+                    <button class="chip" data-query="What are word embeddings?">Word embeddings</button>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <form id="chat-form" autocomplete="off">
+                    <div class="input-wrapper">
+                        <input type="text" id="user-input" placeholder="Ask me about NLP or AI..." autofocus>
+                        <button type="submit" id="send-btn" title="Send">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
