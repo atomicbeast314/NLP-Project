@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP Chatbot — Intent & Sentiment Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f14;--surface:#151820;--card:#1c2030;--border:#2a3045;
+  --text:#e8eaf0;--muted:#7c8aaa;--accent:#5b7fff;--accent2:#ff6b9d;
+  --green:#3dffa0;--red:#ff5c7a;--yellow:#ffd060;
+  font-family:'Syne',sans-serif;
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);}
+
+.app{display:grid;grid-template-columns:280px 1fr;height:100vh;}
+
+/* Sidebar */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.logo{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.logo-badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;letter-spacing:.5px;color:var(--accent)}
+.logo-dot{width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 2s ease-in-out infinite}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:4px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(61,255,160,.4)}50%{box-shadow:0 0 0 6px rgba(61,255,160,0)}}
+
+.nav-section{padding:14px 12px 8px;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+
+.topic-btn{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;margin:2px 8px;border:none;background:transparent;color:var(--text);font-family:inherit;font-size:13px;width:calc(100% - 16px);text-align:left;transition:all .15s}
+.topic-btn:hover{background:var(--card)}
+.topic-btn.active{background:rgba(91,127,255,.1);border:1px solid rgba(91,127,255,.25);color:var(--accent)}
+.topic-icon{font-size:16px;min-width:20px;text-align:center}
+
+.stats-panel{margin-top:auto;padding:14px;border-top:1px solid var(--border)}
+.stats-title{font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;font-weight:600}
+.stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px}
+.stat-label{color:var(--muted)}
+.stat-val{font-family:'IBM Plex Mono',monospace;font-size:11px}
+.stat-pos{color:var(--green)}
+.stat-neg{color:var(--red)}
+.stat-neu{color:var(--yellow)}
+
+/* Chat area */
+.chat-area{display:flex;flex-direction:column;overflow:hidden}
+
+.chat-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)}
+.header-info h2{font-size:15px;font-weight:600;margin-bottom:2px}
+.header-info p{font-size:11px;color:var(--muted)}
+.mode-toggle{display:flex;gap:4px}
+.mode-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s}
+.mode-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-track{background:transparent}
+.messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.msg{display:flex;gap:10px;max-width:100%;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.msg.user{flex-direction:row-reverse}
+
+.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.avatar.bot{background:linear-gradient(135deg,var(--accent),var(--accent2));font-weight:700;font-size:11px;color:#fff}
+.avatar.user{background:var(--card);border:1px solid var(--border)}
+
+.bubble{padding:10px 14px;border-radius:12px;max-width:85%;font-size:13px;line-height:1.6}
+.bubble.bot{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px}
+.bubble.user{background:linear-gradient(135deg,rgba(91,127,255,.85),#4466ee);color:#fff;border-top-right-radius:4px}
+
+.sentiment-tag{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.s-pos{background:rgba(61,255,160,.12);color:var(--green);border:1px solid rgba(61,255,160,.3)}
+.s-neg{background:rgba(255,92,122,.12);color:var(--red);border:1px solid rgba(255,92,122,.3)}
+.s-neu{background:rgba(255,208,96,.12);color:var(--yellow);border:1px solid rgba(255,208,96,.3)}
+.s-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.sentiment-bar{margin-top:8px;height:4px;border-radius:2px;background:var(--border);overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+.emotion-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.chip{padding:2px 8px;border-radius:12px;font-size:10px;background:var(--card);border:1px solid var(--border);color:var(--muted)}
+
+.typing{display:flex;gap:4px;padding:4px 0}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce .8s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.15s}
+.dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+.input-area{padding:14px 20px;border-top:1px solid var(--border);background:var(--surface)}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+.input-wrap{flex:1;position:relative}
+textarea{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;resize:none;outline:none;line-height:1.5;max-height:100px;transition:border .15s}
+textarea:focus{border-color:rgba(91,127,255,.5)}
+textarea::placeholder{color:var(--muted)}
+.send-btn{width:38px;height:38px;border-radius:10px;background:var(--accent);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:16px}
+.send-btn:hover{background:#4466ee;transform:scale(1.05)}
+.send-btn:disabled{background:var(--border);cursor:not-allowed;transform:none}
+
+.quick-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.pill{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.pill:hover{border-color:var(--accent);color:var(--accent)}
+
+.sample-block{margin-top:10px;padding:10px 12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--accent)}
+.sample-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.sample-item{font-size:12px;color:var(--muted);padding:2px 0;margin-bottom:6px}
+
+.code-block{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:8px;overflow-x:auto;line-height:1.7;white-space:pre}
+.kw{color:var(--accent)}
+.str{color:var(--green)}
+.cm{color:var(--muted)}
+
+@media(max-width:640px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .sidebar{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-badge"><span class="logo-dot"></span>NLP CHATBOT</div>
+    <div class="logo-sub">Intent-Based + Sentiment Analysis</div>
+  </div>
+
+  <div class="nav-section">Topics</div>
+  <button class="topic-btn active" onclick="setTopic('nlp')" id="t-nlp">
+    <span class="topic-icon">🧠</span> NLP Concepts
+  </button>
+  <button class="topic-btn" onclick="setTopic('ai')" id="t-ai">
+    <span class="topic-icon">🤖</span> AI Applications
+  </button>
+  <button class="topic-btn" onclick="setTopic('sentiment')" id="t-sentiment">
+    <span class="topic-icon">💬</span> Sentiment Analysis
+  </button>
+  <button class="topic-btn" onclick="setTopic('demo')" id="t-demo">
+    <span class="topic-icon">🎬</span> Sample Conversations
+  </button>
+  <button class="topic-btn" onclick="setTopic('code')" id="t-code">
+    <span class="topic-icon">💻</span> Code & Pipeline
+  </button>
+
+  <div class="stats-panel">
+    <div class="stats-title">Session Stats</div>
+    <div class="stat-row"><span class="stat-label">Messages</span><span class="stat-val" id="stat-total">0</span></div>
+    <div class="stat-row"><span class="stat-label">Positive</span><span class="stat-val stat-pos" id="stat-pos">0</span></div>
+    <div class="stat-row"><span class="stat-label">Negative</span><span class="stat-val stat-neg" id="stat-neg">0</span></div>
+    <div class="stat-row"><span class="stat-label">Neutral</span><span class="stat-val stat-neu" id="stat-neu">0</span></div>
+    <div class="stat-row"><span class="stat-label">Avg Confidence</span><span class="stat-val" id="stat-conf">—</span></div>
+  </div>
+</div>
+
+<!-- Chat -->
+<div class="chat-area">
+  <div class="chat-header">
+    <div class="header-info">
+      <h2 id="chat-title">NLP Concepts</h2>
+      <p id="chat-sub">Ask me anything about Natural Language Processing</p>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="setMode('chat')" id="m-chat">Chat</button>
+      <button class="mode-btn" onclick="setMode('analyze')" id="m-analyze">Analyze</button>
+    </div>
+  </div>
+
+  <div class="messages" id="msgs"></div>
+
+  <div class="input-area">
+    <div class="quick-pills" id="pills"></div>
+    <div class="input-row">
+      <div class="input-wrap">
+        <textarea id="inp" rows="1" placeholder="Type your message..." onkeydown="handleKey(event)" oninput="resize(this)"></textarea>
+      </div>
+      <button class="send-btn" id="send-btn" onclick="send()">↑</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ─── NLP Preprocessing Engine ────────────────────────────────────────────────
+const STOPWORDS = new Set(['a','an','the','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','shall','can','need','dare','ought','used','i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','its','our','their','this','that','these','those','and','but','or','nor','for','yet','so','at','by','to','in','on','of','with','from','about','into','through','over','after','before','between','among','what','which','who','how','when','where','why']);
+
+function preprocess(text){
+  const lower = text.toLowerCase();
+  const noSpecial = lower.replace(/[^a-z0-9\s']/g,'');
+  const tokens = noSpecial.split(/\s+/).filter(t=>t.length>1);
+  const filtered = tokens.filter(t=>!STOPWORDS.has(t));
+  const stemmed = filtered.map(stem);
+  return {tokens, filtered, stemmed};
+}
+
+function stem(word){
+  if(word.endsWith('ing')&&word.length>5) return word.slice(0,-3);
+  if(word.endsWith('tion')) return word.slice(0,-3);
+  if(word.endsWith('ness')) return word.slice(0,-4);
+  if(word.endsWith('ful')) return word.slice(0,-3);
+  if(word.endsWith('ment')) return word.slice(0,-4);
+  if(word.endsWith('ies')&&word.length>4) return word.slice(0,-3)+'y';
+  if(word.endsWith('es')&&word.length>4) return word.slice(0,-2);
+  if(word.endsWith('s')&&!word.endsWith('ss')&&word.length>3) return word.slice(0,-1);
+  return word;
+}
+
+// ─── Sentiment Analysis ───────────────────────────────────────────────────────
+const SENTIMENT_LEX = {
+  positive:{amazing:3,excellent:3,outstanding:3,brilliant:3,fantastic:3,wonderful:3,love:2,great:2,good:2,nice:2,happy:2,enjoy:2,best:2,perfect:2,helpful:2,clear:2,easy:2,powerful:2,fast:2,accurate:2,interesting:2,impressive:2,beautiful:2,smart:2,elegant:2,effective:2,useful:2,success:2,like:1,okay:1,fine:1,decent:1,better:1,improve:1,well:1},
+  negative:{terrible:3,horrible:3,awful:3,dreadful:3,worst:3,hate:2,bad:2,poor:2,wrong:2,fail:2,error:2,broken:2,slow:2,difficult:2,hard:2,complex:2,confusing:2,complicated:2,useless:2,boring:2,frustrating:2,annoying:2,disappointing:2,mediocre:1,issue:1,problem:1,not:1,never:1,cannot:1},
+  negators: new Set(['not','no','never','neither','nor','cannot','cant','dont','wont','wouldnt','shouldnt','isnt','arent','wasnt','havent','hadnt'])
+};
+
+const EMOTION_LEX = {
+  joy:['happy','joy','love','excited','wonderful','amazing','great','laugh','smile','fun'],
+  sadness:['sad','cry','grief','sorrow','depressed','miserable','unhappy','heartbreak'],
+  anger:['angry','furious','rage','hate','frustrate','annoy','irritate'],
+  fear:['afraid','scared','fear','worry','anxious','nervous','panic'],
+  surprise:['amazing','wow','unexpected','sudden','incredible','unbelievable'],
+  trust:['trust','reliable','honest','safe','secure','confident','believe']
+};
+
+function analyzeSentiment(text){
+  const pp = preprocess(text);
+  const words = pp.tokens;
+  let score=0, posCount=0, negCount=0;
+  for(let i=0;i<words.length;i++){
+    const w = words[i];
+    const negated = i>0 && SENTIMENT_LEX.negators.has(words[i-1]);
+    if(SENTIMENT_LEX.positive[w]){
+      const v=SENTIMENT_LEX.positive[w];
+      score += negated ? -v : v;
+      negated ? negCount++ : posCount++;
+    } else if(SENTIMENT_LEX.negative[w]){
+      const v=SENTIMENT_LEX.negative[w];
+      score += negated ? v : -v;
+      negated ? posCount++ : negCount++;
+    }
+  }
+  const maxScore = words.length*2||1;
+  const normalized = Math.max(-1,Math.min(1,score/maxScore));
+  let sentiment, confidence;
+  if(normalized>0.05){sentiment='positive';confidence=Math.min(0.95,0.5+Math.abs(normalized)*0.5);}
+  else if(normalized<-0.05){sentiment='negative';confidence=Math.min(0.95,0.5+Math.abs(normalized)*0.5);}
+  else{sentiment='neutral';confidence=0.6+Math.random()*0.1;}
+  const textLower = text.toLowerCase();
+  const emotions = [];
+  for(const [em,kws] of Object.entries(EMOTION_LEX)){
+    for(const k of kws){if(textLower.includes(k)){emotions.push(em);break;}}
+  }
+  return {sentiment,confidence:Math.round(confidence*100),score:normalized,posCount,negCount,emotions:emotions.slice(0,3),preprocessed:pp};
+}
+
+// ─── Intent Recognition ───────────────────────────────────────────────────────
+const INTENTS = [
+  {id:'greet',patterns:['hello','hi','hey','good morning','good evening','howdy'],topic:'all'},
+  {id:'nlp_what',patterns:['what is nlp','what is natural language','define nlp','explain nlp','tell me about nlp'],topic:'nlp'},
+  {id:'nlp_tokenize',patterns:['tokenization','tokenize','token','split text','word splitting'],topic:'nlp'},
+  {id:'nlp_stem',patterns:['stemming','stem','lemmatization','lemmatize','root word'],topic:'nlp'},
+  {id:'nlp_pos',patterns:['pos tagging','part of speech','pos tag','grammar tag'],topic:'nlp'},
+  {id:'nlp_ner',patterns:['ner','named entity','entity recognition','extract names'],topic:'nlp'},
+  {id:'nlp_tfidf',patterns:['tfidf','tf-idf','term frequency','inverse document frequency'],topic:'nlp'},
+  {id:'nlp_embed',patterns:['word2vec','glove','embedding','word vector','bert','transformer'],topic:'nlp'},
+  {id:'ai_sentiment',patterns:['sentiment analysis','analyze sentiment','opinion mining','detect emotion'],topic:'ai'},
+  {id:'ai_chatbot',patterns:['chatbot','chat bot','conversational ai','dialogue system'],topic:'ai'},
+  {id:'ai_cv',patterns:['computer vision','image recognition','object detection'],topic:'ai'},
+  {id:'ai_ml',patterns:['machine learning','ml','neural network','deep learning'],topic:'ai'},
+  {id:'ai_app',patterns:['applications','use case','real world','industry','examples of ai'],topic:'ai'},
+  {id:'demo_positive',patterns:['positive review','positive example','good review','show positive'],topic:'demo'},
+  {id:'demo_negative',patterns:['negative review','bad review','negative example','show negative'],topic:'demo'},
+  {id:'demo_sarcasm',patterns:['sarcasm','sarcastic','irony','ironic'],topic:'demo'},
+  {id:'code_pipeline',patterns:['code','python','pipeline','implement','how to build'],topic:'code'},
+  {id:'unknown',patterns:[],topic:'all'}
+];
+
+function detectIntent(text){
+  const lower = text.toLowerCase();
+  const pp = preprocess(lower);
+  const words = [...pp.tokens,...pp.stemmed];
+  let best=null, bestScore=0;
+  for(const intent of INTENTS){
+    if(intent.id==='unknown') continue;
+    for(const pat of intent.patterns){
+      if(lower.includes(pat)){
+        const s=pat.split(' ').length*2;
+        if(s>bestScore){bestScore=s;best=intent;}
+      } else {
+        const patWords=pat.split(' ');
+        const matches=patWords.filter(pw=>words.some(w=>w.startsWith(pw.slice(0,4))));
+        if(matches.length>0){const s=matches.length;if(s>bestScore){bestScore=s;best=intent;}}
+      }
+    }
+  }
+  return best||INTENTS[INTENTS.length-1];
+}
+
+// ─── Responses ────────────────────────────────────────────────────────────────
+const RESPONSES = {
+  greet:{text:"Hello! I'm your NLP assistant 🤖 I can help you understand:\n• **NLP Concepts** — tokenization, stemming, POS tagging, embeddings\n• **AI Applications** — sentiment analysis, chatbots, CV\n• **Live Sentiment** — analyze any text you type\n\nWhat would you like to explore?",type:'intro'},
+  nlp_what:{text:"**Natural Language Processing (NLP)** is a field of AI that enables computers to understand, interpret, and generate human language.\n\nKey NLP tasks include:\n• **Tokenization** — splitting text into tokens\n• **Stemming/Lemmatization** — reducing words to root forms\n• **POS Tagging** — labeling grammatical roles\n• **NER** — identifying named entities\n• **Sentiment Analysis** — detecting opinion/emotion",type:'nlp'},
+  nlp_tokenize:{text:"**Tokenization** is the process of splitting text into individual units called tokens.\n\nExample preprocessing pipeline:\n```\nInput: 'NLP is amazing!'\n↓ Lowercase   → 'nlp is amazing!'\n↓ Remove punct → 'nlp is amazing'\n↓ Tokenize    → ['nlp', 'is', 'amazing']\n↓ Remove stop  → ['nlp', 'amazing']\n↓ Stem        → ['nlp', 'amaz']\n```\nThis pipeline runs live on every message you send! 🔍",type:'nlp',code:true},
+  nlp_stem:{text:"**Stemming** reduces words to their root/base form.\n\nExamples:\n• running → run\n• studies → studi\n• connections → connect\n\n**Lemmatization** is more sophisticated — it uses vocabulary to return the dictionary form:\n• better → good (lemma)\n• running → run (lemma)\n\nThis chatbot uses a rule-based stemmer on every message!",type:'nlp'},
+  nlp_pos:{text:"**Part-of-Speech (POS) Tagging** assigns grammatical labels to each word.\n\nExample:\n```\n'The quick brown fox jumps'\n The    → DT (Determiner)\n quick  → JJ (Adjective)\n brown  → JJ (Adjective)\n fox    → NN (Noun)\n jumps  → VBZ (Verb)\n```\nPOS tagging is foundational for parsing, NER, and information extraction.",type:'nlp'},
+  nlp_ner:{text:"**Named Entity Recognition (NER)** identifies and classifies key entities in text.\n\nEntity Types:\n• PERSON — 'Elon Musk founded SpaceX'\n• ORG — 'Google released BERT'\n• LOCATION — 'Paris is in France'\n• DATE — 'on January 15th'\n• MONEY — '$500 million funding'\n\nApplications: information extraction, knowledge graphs, question answering.",type:'nlp'},
+  nlp_tfidf:{text:"**TF-IDF** (Term Frequency-Inverse Document Frequency) measures word importance.\n\n**Formula:**\n```\nTF(t,d)  = count(t in d) / total words in d\nIDF(t)   = log(N / docs containing t)\nTF-IDF   = TF × IDF\n```\nCommon words like 'the' get low scores. Rare, important words get high scores. Used for search engines and keyword extraction.",type:'nlp'},
+  nlp_embed:{text:"**Word Embeddings** represent words as dense vectors in a semantic space.\n\nKey models:\n• **Word2Vec** — predicts context (CBOW) or word from context (Skip-gram)\n• **GloVe** — uses global co-occurrence statistics\n• **BERT** — bidirectional transformer, context-aware\n• **GPT** — autoregressive transformer\n\nEmbeddings capture semantic relationships:\n• king - man + woman ≈ queen",type:'nlp'},
+  ai_sentiment:{text:"**Sentiment Analysis** classifies the emotional tone of text.\n\nThis chatbot analyzes YOUR messages live using:\n1. Lexicon-based scoring with a sentiment dictionary\n2. Negation detection (not good → negative)\n3. Confidence scoring\n4. Emotion detection (joy, sadness, anger, fear...)\n\nTypes of sentiment analysis:\n• Binary (positive/negative)\n• Multi-class (+ neutral)\n• Aspect-based\n• Emotion detection\n• Sarcasm detection",type:'ai'},
+  ai_chatbot:{text:"**Chatbot Architectures:**\n\n🔷 **Rule-Based** (this bot!) — pattern matching + intent detection. Fast, predictable, interpretable.\n\n🔷 **Retrieval-Based** — selects best response from a corpus using similarity matching.\n\n🔷 **Generative** — uses seq2seq/transformer models to generate new responses.\n\n🔷 **Hybrid** — combines all three. Best production performance.\n\nKey components: NLU (understand), DM (manage dialogue), NLG (generate response).",type:'ai'},
+  ai_cv:{text:"**Computer Vision** enables machines to interpret visual information.\n\nApplications:\n• Image classification (ResNet, EfficientNet)\n• Object detection (YOLO, R-CNN)\n• Facial recognition\n• Medical imaging (tumor detection)\n• Autonomous vehicles\n• OCR (text from images)\n\nModern CV uses CNNs and Vision Transformers (ViT).",type:'ai'},
+  ai_ml:{text:"**Machine Learning** is the foundation of modern AI.\n\nTypes:\n• **Supervised** — labeled data (classification, regression)\n• **Unsupervised** — unlabeled data (clustering, dimensionality reduction)\n• **Reinforcement** — learns from rewards\n• **Self-supervised** — labels from data itself (GPT, BERT)\n\nFor NLP specifically: deep learning with transformers dominates state-of-the-art.",type:'ai'},
+  ai_app:{text:"**Real-World AI Applications:**\n\n🏥 Healthcare — diagnosis, drug discovery\n💰 Finance — fraud detection, trading\n📱 Social Media — content moderation, recommendations\n🛒 E-commerce — product search, review analysis\n🚗 Transport — autonomous vehicles\n📞 Customer Service — chatbots, ticket routing\n🎓 Education — adaptive learning, plagiarism detection\n🌐 Translation — real-time multilingual communication",type:'ai'},
+  demo_positive:{text:"📊 **Positive Sentiment Examples:**",type:'demo',demo:'positive'},
+  demo_negative:{text:"📊 **Negative Sentiment Examples:**",type:'demo',demo:'negative'},
+  demo_sarcasm:{text:"**Sarcasm Detection Challenge:**\n\nSarcasm is where literal meaning ≠ intended meaning.\n\nExamples:\n• 'Oh great, another Monday!' → Actually negative\n• 'Yeah right, that totally worked' → Negative\n• 'Sure, I love waiting 3 hours' → Negative\n\nRuling challenge: Rule-based systems fail here. Modern models use contextual embeddings (BERT) + prosodic features to catch sarcasm with ~70–80% accuracy.",type:'demo'},
+  code_pipeline:{text:"**Python NLP Pipeline:**",type:'code'},
+  unknown:{text:"I understand you're asking about something! Let me suggest some topics:\n\n• Ask about **NLP concepts** (tokenization, stemming, embeddings)\n• Ask about **AI applications** (sentiment analysis, chatbots)\n• Type any review/text and I'll **analyze its sentiment live**\n• Ask for **sample conversations** or **code examples**",type:'intro'}
+};
+
+const DEMO_REVIEWS = {
+  positive:[
+    {text:"The movie was absolutely brilliant! The acting was superb and the storyline kept me engaged throughout."},
+    {text:"This product is amazing! Fast delivery, excellent quality, I love it!"},
+    {text:"The restaurant food was wonderful. Great service and the ambiance was perfect."}
+  ],
+  negative:[
+    {text:"Terrible experience. The service was awful and the product broke after one day."},
+    {text:"Worst movie I've ever seen. Boring plot and horrible acting. Complete waste of money."},
+    {text:"The battery life is poor and the camera quality is bad. Very disappointed."}
+  ]
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let stats = {total:0,pos:0,neg:0,neu:0,confSum:0};
+let currentTopic = 'nlp';
+let currentMode = 'chat';
+
+const QUICK = {
+  nlp:['What is NLP?','Tokenization','Stemming & Lemmatization','Word Embeddings','POS Tagging'],
+  ai:['Sentiment Analysis','Chatbot Types','AI Applications','Machine Learning basics'],
+  sentiment:['Analyze: I love this product!','Analyze: This is terrible','Analyze: The service was okay'],
+  demo:['Positive reviews','Negative reviews','Sarcasm examples'],
+  code:['Show NLP pipeline code']
+};
+
+const TITLES = {
+  nlp:['NLP Concepts','Ask me anything about Natural Language Processing'],
+  ai:['AI Applications','Explore real-world AI use cases'],
+  sentiment:['Sentiment Analyzer','Type any text to analyze its sentiment'],
+  demo:['Sample Conversations','See the chatbot in action'],
+  code:['Code & Pipeline','NLP implementation in Python']
+};
+
+function setTopic(t){
+  currentTopic = t;
+  document.querySelectorAll('.topic-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('t-'+t).classList.add('active');
+  const [title,sub] = TITLES[t];
+  document.getElementById('chat-title').textContent = title;
+  document.getElementById('chat-sub').textContent = sub;
+  renderPills();
+  document.getElementById('inp').placeholder = t==='sentiment' ? 'Type any text to analyze sentiment...' : 'Type your message...';
+}
+
+function setMode(m){
+  currentMode = m;
+  ['chat','analyze'].forEach(x=>document.getElementById('m-'+x).classList.toggle('active',x===m));
+}
+
+function renderPills(){
+  const pills = document.getElementById('pills');
+  pills.innerHTML = '';
+  (QUICK[currentTopic]||[]).forEach(q=>{
+    const b = document.createElement('button');
+    b.className = 'pill';
+    b.textContent = q;
+    b.onclick = ()=>{document.getElementById('inp').value=q;send();};
+    pills.appendChild(b);
+  });
+}
+
+function addMsg(role, content, meta){
+  const msgs = document.getElementById('msgs');
+  const div = document.createElement('div');
+  div.className = 'msg '+role;
+
+  const av = document.createElement('div');
+  av.className = 'avatar '+(role==='bot'?'bot':'user');
+  av.textContent = role==='bot' ? 'NLP' : '👤';
+
+  const bub = document.createElement('div');
+  bub.className = 'bubble '+(role==='bot'?'bot':'user');
+
+  let html = content
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/```([\s\S]+?)```/g,'<div class="code-block">$1</div>')
+    .replace(/\n•/g,'<br>•')
+    .replace(/\n/g,'<br>');
+  bub.innerHTML = html;
+
+  // Sentiment tag on user messages
+  if(meta && meta.sentiment && role==='user'){
+    const sc = meta.sentiment;
+    const cls = {'positive':'s-pos','negative':'s-neg','neutral':'s-neu'}[sc];
+    const tag = document.createElement('div');
+    tag.className = 'sentiment-tag '+cls;
+    tag.innerHTML = `<span class="s-dot"></span> ${sc.toUpperCase()} · ${meta.confidence}%`;
+    bub.appendChild(tag);
+
+    const barCol = {'positive':'var(--green)','negative':'var(--red)','neutral':'var(--yellow)'}[sc];
+    const bar = document.createElement('div');
+    bar.className = 'sentiment-bar';
+    bar.innerHTML = `<div class="bar-fill" style="width:0;background:${barCol}"></div>`;
+    bub.appendChild(bar);
+    setTimeout(()=>bar.querySelector('.bar-fill').style.width=meta.confidence+'%',100);
+
+    if(meta.emotions && meta.emotions.length>0){
+      const chips = document.createElement('div');
+      chips.className = 'emotion-chips';
+      meta.emotions.forEach(e=>{
+        const c = document.createElement('span');
+        c.className = 'chip';
+        c.textContent = '🎭 '+e;
+        chips.appendChild(c);
+      });
+      bub.appendChild(chips);
+    }
+  }
+
+  // Demo reviews block
+  if(role==='bot' && meta && meta.demo){
+    const demos = DEMO_REVIEWS[meta.demo]||[];
+    if(demos.length>0){
+      const blk = document.createElement('div');
+      blk.className = 'sample-block';
+      blk.innerHTML = '<div class="sample-label">Live Analysis</div>';
+      demos.forEach(d=>{
+        const r = analyzeSentiment(d.text);
+        const cls = {'positive':'s-pos','negative':'s-neg','neutral':'s-neu'}[r.sentiment];
+        blk.innerHTML += `<div class="sample-item"><em>"${d.text.substring(0,70)}..."</em><br><span class="sentiment-tag ${cls}" style="margin-top:4px;display:inline-flex"><span class="s-dot"></span>&nbsp;${r.sentiment.toUpperCase()} ${r.confidence}%</span></div>`;
+      });
+      bub.appendChild(blk);
+    }
+  }
+
+  // Code block for tokenization
+  if(role==='bot' && meta && meta.code){
+    const blk = document.createElement('div');
+    blk.className = 'code-block';
+    blk.innerHTML = `<span class="cm"># NLP Preprocessing Pipeline</span>
+<span class="kw">import</span> re
+<span class="kw">from</span> nltk.tokenize <span class="kw">import</span> word_tokenize
+<span class="kw">from</span> nltk.corpus <span class="kw">import</span> stopwords
+<span class="kw">from</span> nltk.stem <span class="kw">import</span> PorterStemmer
+
+<span class="kw">def</span> preprocess(text):
+    text = text.lower()
+    text = re.sub(<span class="str">r'[^a-z0-9\\s]'</span>, <span class="str">''</span>, text)
+    tokens = word_tokenize(text)
+    tokens = [t <span class="kw">for</span> t <span class="kw">in</span> tokens
+              <span class="kw">if</span> t <span class="kw">not in</span> stopwords.words(<span class="str">'english'</span>)]
+    stemmer = PorterStemmer()
+    tokens = [stemmer.stem(t) <span class="kw">for</span> t <span class="kw">in</span> tokens]
+    <span class="kw">return</span> tokens
+
+<span class="cm"># TextBlob sentiment</span>
+<span class="kw">from</span> textblob <span class="kw">import</span> TextBlob
+blob = TextBlob(<span class="str">"The product was amazing!"</span>)
+print(blob.sentiment)  <span class="cm"># polarity=0.9</span>`;
+    bub.appendChild(blk);
+  }
+
+  // Python pipeline code block
+  if(role==='bot' && meta && meta.type==='code'){
+    const blk = document.createElement('div');
+    blk.className = 'code-block';
+    blk.innerHTML = `<span class="cm"># Sentiment Analysis ML Pipeline</span>
+<span class="kw">from</span> sklearn.feature_extraction.text <span class="kw">import</span> TfidfVectorizer
+<span class="kw">from</span> sklearn.linear_model <span class="kw">import</span> LogisticRegression
+<span class="kw">from</span> sklearn.pipeline <span class="kw">import</span> Pipeline
+
+pipeline = Pipeline([
+    (<span class="str">'tfidf'</span>, TfidfVectorizer(max_features=<span class="kw">5000</span>)),
+    (<span class="str">'clf'</span>,  LogisticRegression())
+])
+
+<span class="cm"># Train</span>
+pipeline.fit(X_train, y_train)
+
+<span class="cm"># Predict</span>
+result = pipeline.predict([<span class="str">"This product is great!"</span>])
+<span class="cm"># → ['positive']</span>
+
+<span class="cm"># Evaluate</span>
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> classification_report
+print(classification_report(y_test, pipeline.predict(X_test)))`;
+    bub.appendChild(blk);
+  }
+
+  if(role==='bot'){div.appendChild(av);div.appendChild(bub);}
+  else{div.appendChild(bub);div.appendChild(av);}
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping(){
+  const msgs = document.getElementById('msgs');
+  const div = document.createElement('div');
+  div.className='msg bot'; div.id='typing-indicator';
+  const av = document.createElement('div');
+  av.className='avatar bot'; av.textContent='NLP';
+  const bub = document.createElement('div');
+  bub.className='bubble bot';
+  bub.innerHTML='<div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+  div.appendChild(av); div.appendChild(bub);
+  msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function hideTyping(){
+  const el=document.getElementById('typing-indicator');
+  if(el) el.remove();
+}
+
+function updateStats(r){
+  stats.total++;
+  if(r.sentiment==='positive') stats.pos++;
+  else if(r.sentiment==='negative') stats.neg++;
+  else stats.neu++;
+  stats.confSum += r.confidence;
+  document.getElementById('stat-total').textContent = stats.total;
+  document.getElementById('stat-pos').textContent = stats.pos;
+  document.getElementById('stat-neg').textContent = stats.neg;
+  document.getElementById('stat-neu').textContent = stats.neu;
+  document.getElementById('stat-conf').textContent = Math.round(stats.confSum/stats.total)+'%';
+}
+
+function send(){
+  const inp = document.getElementById('inp');
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value=''; resize(inp);
+
+  const sResult = analyzeSentiment(text);
+  updateStats(sResult);
+  addMsg('user', text, sResult);
+
+  const intent = detectIntent(text);
+  const resp = RESPONSES[intent.id]||RESPONSES.unknown;
+
+  showTyping();
+  setTimeout(()=>{
+    hideTyping();
+    const meta = {type:resp.type};
+    if(resp.demo) meta.demo = resp.demo;
+    if(resp.code) meta.code = resp.code;
+    addMsg('bot', resp.text, meta);
+  }, 600+Math.random()*400);
+}
+
+function handleKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
+}
+
+function resize(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,100)+'px';
+}
+
+// Init
+renderPills();
+setTimeout(()=>{
+  addMsg('bot', RESPONSES.greet.text, {type:'intro'});
+},300);
+</script>
+</body>
+</html>
